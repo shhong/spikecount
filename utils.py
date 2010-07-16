@@ -43,4 +43,4 @@ class TimeWindow(object):
     from numpy import zeros
     self.window = zeros(2*self.width+1)
     self.window[self.width-self.wsize:self.width+self.wsize+1]=1.0
-    
+

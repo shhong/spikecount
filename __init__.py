@@ -1,7 +1,10 @@
 import os.path as _p
 import utils
 from numpy import sqrt, fromfile, array, savetxt
-  
+from numpy import ones, zeros, convolve
+
+import shannon
+
 class Data(object):
   def __init__(self, data_path, c):
     import shutil
@@ -11,6 +14,7 @@ class Data(object):
     self.output_path = _p.join('result', self.data_path)
     utils.mkdir_p(self.output_path)
     self.cgmdir = _p.join(self.data_path, 'cgm')
+    self.spiketime_dir = _p.join(self.data_path, 'spiketime')
     
     self.single_data = utils.read_table(_p.join(self.data_path,'statid_correlation_mu_sigma2_urate.dat'))
     shutil.copyfile(_p.join(self.data_path,'statid_correlation_mu_sigma2_urate.dat'),
@@ -19,6 +23,17 @@ class Data(object):
     self.zero_firing = [i for i in self.single_data if self.single_data[i]['urate']<1e-8]
     self.pairs = utils.read_pairs(self.cgmdir)
     self.pair_data = [{'id': p} for p in self.pairs]
+  
+  def spiketime(self, i):
+    return fromfile(_p.join(self.spiketime_dir, str(i)+'.spiketime.bin'))
+  
+  def rate_train(self, i, twait=1000.0, wsize=200.0, tstop = 1801000):    
+    t = self.spiketime(i)-twait
+    t = t[t>0]
+    r = zeros(tstop-twait)
+    r[t.astype(int)] = 1.0
+    r = convolve(ones(wsize), r)[-r.size:-wsize]
+    return r
   
   def compute_mean_rate(self):
     for d in self.pair_data:
