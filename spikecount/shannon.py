@@ -1,52 +1,89 @@
-from numpy import zeros, log
+from numpy import zeros, log2, array, histogram, histogram2d, bincount
 
-def plogp(p, epsilon):
+def plog2p(p, epsilon):
   x = zeros(p.shape)
   ind = (p>=epsilon)
   q = p[ind]
-  x[ind] = q * log(q)
+  x[ind] = q * log2(q)
   return x
 
 def count1(u):
-  r = u-u.min()
-  N = int(r.max())
+  umin = u.min()
+  r = (u-u.min()).astype(int)
+  N = r.max()
+  p = bincount(r)
+  return (p, (umin, umin+N))
+
+def count1p(u):
+  umin, umax = u.min(), u.max()
+  p, b = histogram(u,umax-umin+1)
+  return (p, (umin, umax))
+
+def merge1(x):
+  bmin = array([y[1][0] for y in x]).min()
+  bmax = array([y[1][1] for y in x]).max()
+  N = int(bmax-bmin)
   p = zeros(N+1)
-  
-  for i in r:
-    j = int(float(i))
-    p[j] = p[j] + 1
-  return (p, 1.0)
+  for y in x:
+    i1 = y[1][0]-bmin
+    i2 = y[1][1]-bmin+1
+    p[i1:i2] = p[i1:i2] + y[0]
+  return (p, (bmin, bmax))
 
 def count2(u1, u2):
-  r1, r2 = u1-u1.min(), u2-u2.min()
-  N1, N2 = int(r1.max()), int(r2.max())
+  umin1, umin2 = u1.min(), u2.min()
+  r1, r2 = (u1-umin1).astype(int), (u2-umin2).astype(int)
+  N1, N2 = r1.max(), r2.max()
   
   p12 = zeros((N1+1, N2+1))
   
   for i, re1 in enumerate(r1):
-    j1 = int(re1)
-    j2 = int(r2[i])
+    j1 = re1
+    j2 = r2[i]
     p12[j1,j2] = p12[j1,j2] + 1
   
-  return (p12, 1.0)
+  return (p12, ((umin1,umin1+N1),(umin2,umin2+N2)))
+
+def count2p(u1, u2):
+  umin1, umin2 = u1.min(), u2.min()
+  umax1, umax2 = u1.max(), u2.max()
+  p12, x, y = histogram2d(u1, u2, (umax1-umin1+1, umax2-umin2+1)) 
+  
+  return (p12, ((umin1,umax1),(umin2,umax2)))
+
+def merge2(x):
+  bmin1 = array([y[1][0][0] for y in x]).min()
+  bmin2 = array([y[1][1][0] for y in x]).min()
+  bmax1 = array([y[1][0][1] for y in x]).max()
+  bmax2 = array([y[1][1][1] for y in x]).max()
+  N1 = int(bmax1-bmin1)
+  N2 = int(bmax2-bmin2)
+  p = zeros((N1+1, N2+1))
+  for y in x:
+    imin1 = y[1][0][0]-bmin1
+    imax1 = y[1][0][1]-bmin1+1
+    imin2 = y[1][1][0]-bmin2
+    imax2 = y[1][1][1]-bmin2+1
+    p[imin1:imax1,imin2:imax2] = p[imin1:imax1,imin2:imax2] + y[0]
+  return (p, ((bmin1, bmax1),(bmin2,bmax2)))
+
+def entropy_from_count(p):
+  N = float(p[0].sum())
+  q = p[0]/N
+  epsilon = 1.0/N
+  return -plog2p(q, epsilon).sum()
   
 def entropy1(r):
-  L = r.size
-  p, delta = count1(r)
-  p = p/L
-  epsilon = 1.0/L
-  return -plogp(p, epsilon).sum()
+  p = count1(r)
+  return entropy_from_count(p)
 
 def entropy2(*r):
   if len(r) is 1:
     r1, r2 = r[0]
   else:
     r1, r2 = r
-  L = r1.size
-  p12, delta2 = count2(r1, r2)
-  p12 = p12/L
-  epsilon = 1.0/L
-  return -plogp(p12, epsilon).sum()
+  p12 = count2p(r1, r2)
+  return entropy_from_count(p12)
 
 def bootstrap(*args, **kwargs):
   from numpy import array, polyfit
@@ -66,3 +103,8 @@ def bootstrap(*args, **kwargs):
   if default['debug']: print ss
   sr = polyfit(1.0/array(block_sizes), array(ss), 2)
   return {'predict':sr[-1], 'samples':ss}
+
+def mix_samples(p):
+  from numpy import vstack, array
+  N, L = len(p[0]), len(p)
+  return vstack(p).T.reshape(N*L)
