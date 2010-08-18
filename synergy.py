@@ -2,8 +2,6 @@
 import spikecount
 from spikecount.shannon import mix_samples
 
-WSIZE = 200
-
 def h2(x):
   from spikecount.shannon import bootstrap, entropy2
   scompare = bootstrap(entropy2, x[0], x[1], debug=False)['predict']
@@ -24,11 +22,11 @@ def shuffle1(r):
 def shuffle(r):
   return [r[0], shuffle1(r[1])]
 
-def main(d, indlist):
+def main(d, indlist, wsize=200):
   i1, i2 = indlist[0]
   j1, j2 = indlist[1]
-  r_s1 = [d.rate_train(i, WSIZE) for i in [i1, i2]]
-  r_s2 = [d.rate_train(j, WSIZE) for j in [j1, j2]]
+  r_s1 = [d.rate_train(i, wsize) for i in [i1, i2]]
+  r_s2 = [d.rate_train(j, wsize) for j in [j1, j2]]
   r_all = [mix_samples([r_s1[i], r_s2[i]]) for i in range(2)]
   
   ai_12, bi_12 = h2(r_all), (h2(r_s1) + h2(r_s2))/2.0
@@ -49,5 +47,9 @@ if __name__ == '__main__':
   
   d = spikecount.Data(sys.argv[1], 0.5)
   inds = loadtxt(sys.argv[2], int)
+  if len(sys.argv)>3:
+    WSIZE = int(sys.argv[3])
+  else:
+    WSIZE = 200
   for i in xrange(inds.shape[0]-1):
-    main(d, inds[i:i+2,])
+    main(d, inds[i:i+2,], wsize=WSIZE)
