@@ -22,6 +22,10 @@ def shuffle1(r):
 def shuffle(r):
   return [r[0], shuffle1(r[1])]
 
+def print_header():
+  print 'index1', 'index2', 'mi1', 'mi2', 'miall', 'mishuffle', 'minoise', 'misignal', 'micondition', 'minocondition'
+  
+
 def main(d, indlist, wsize=200):
   i1, i2 = indlist[0]
   j1, j2 = indlist[1]
@@ -51,5 +55,6 @@ if __name__ == '__main__':
     WSIZE = int(sys.argv[3])
   else:
     WSIZE = 200
+  print_header()
   for i in xrange(inds.shape[0]-1):
     main(d, inds[i:i+2,], wsize=WSIZE)
